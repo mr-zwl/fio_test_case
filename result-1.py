@@ -24,7 +24,7 @@ result_rows = []
 # 遍历文件列表
 for file_name in file_list:
     # 从文件名中提取信息
-    match = re.match(r'iscsi_libaio_(\d+)_(\d+)_(\w+)_(\d+[kKmM]+)\.log', file_name)
+    match = re.match(r'iscsi_libaio_(\d+)_(\d+)_(\w+)_(\d+[kKmMbyte]+)\.log', file_name)
 
     if match:
         jobs, io_depth, io_type, io_size = match.groups()
