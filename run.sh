@@ -2,6 +2,15 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
+ENV_FILE="${SCRIPT_DIR}/.env"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    source "$ENV_FILE"
+    set +a
+    echo "Loaded config from ${ENV_FILE}"
+fi
+
 SINGLE_DISK="${SCRIPT_DIR}/single-disk.sh"
 
 if [ ! -x "$SINGLE_DISK" ]; then
