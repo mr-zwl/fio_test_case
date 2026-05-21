@@ -1,35 +1,35 @@
 #!/bin/bash
+set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+SINGLE_DISK="${SCRIPT_DIR}/single-disk.sh"
 
-./single-disk.sh
+if [ ! -x "$SINGLE_DISK" ]; then
+    echo "Error: ${SINGLE_DISK} not found or not executable"
+    exit 1
+fi
 
-sed -i 's/IODEPTH=1/IODEPTH=2/g' single-disk.sh
-sed -i 's/NUMJOBS=1/NUMJOBS=2/g' single-disk.sh
-./single-disk.sh
+# iodepth:numjobs
+DEFAULT_CASES="1:1 2:2 4:4 8:4 16:4 8:8 16:8 32:8"
+read -ra CASES <<< "${CASES:-$DEFAULT_CASES}"
 
-sed -i 's/IODEPTH=2/IODEPTH=4/g' single-disk.sh
-sed -i 's/NUMJOBS=2/NUMJOBS=4/g' single-disk.sh
-./single-disk.sh
+TOTAL=${#CASES[@]}
+CURRENT=0
 
-sed -i 's/IODEPTH=4/IODEPTH=8/g' single-disk.sh
-sed -i 's/NUMJOBS=4/NUMJOBS=4/g' single-disk.sh
-./single-disk.sh
+for case in "${CASES[@]}"; do
+    IFS=: read -r iodepth numjobs <<< "$case"
+    CURRENT=$((CURRENT + 1))
+    echo "============================================"
+    echo "  [${CURRENT}/${TOTAL}] IODEPTH=${iodepth} NUMJOBS=${numjobs}"
+    echo "============================================"
+    IODEPTH="$iodepth" NUMJOBS="$numjobs" "$SINGLE_DISK"
+done
 
-sed -i 's/IODEPTH=8/IODEPTH=16/g' single-disk.sh
-sed -i 's/NUMJOBS=4/NUMJOBS=4/g' single-disk.sh
-./single-disk.sh
-
-sed -i 's/IODEPTH=16/IODEPTH=8/g' single-disk.sh
-sed -i 's/NUMJOBS=4/NUMJOBS=8/g' single-disk.sh
-./single-disk.sh
-
-sed -i 's/IODEPTH=8/IODEPTH=16/g' single-disk.sh
-sed -i 's/NUMJOBS=8/NUMJOBS=8/g' single-disk.sh
-./single-disk.sh
-
-sed -i 's/IODEPTH=16/IODEPTH=32/g' single-disk.sh
-sed -i 's/NUMJOBS=8/NUMJOBS=8/g' single-disk.sh
-./single-disk.sh
-
-sed -i 's/IODEPTH=32/IODEPTH=1/g' single-disk.sh
-sed -i 's/NUMJOBS=8/NUMJOBS=1/g' single-disk.sh
+echo ""
+echo "All fio tests completed. Parsing results..."
+echo ""
+echo "=== Pure IO Results ==="
+python3 "${SCRIPT_DIR}/result-1.py"
+echo ""
+echo "=== Mixed RW Results ==="
+python3 "${SCRIPT_DIR}/result-rw-1.py"

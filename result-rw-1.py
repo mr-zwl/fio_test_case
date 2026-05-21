@@ -1,162 +1,113 @@
+import json
 import os
-
-# 获取文件列表
-file_list = [file for file in os.listdir() if "_randrw_" in file]
-#file_list = [file for file in os.listdir() if "_rw_" in file]
-
-# 初始化匹配文件总数的计数器
-matched_file_count = 0
-
-# 初始化列标题
-header = "IO_Size(k), IO_Size_Convert(k), IO_Type, Jobs, IO_Depth, Read_IOPS, Read_BW(MiB/s), Read_Avg_Latency(usec), Read_99.00th_Latency(usec), Read_99.90th_Latency(usec), Write_IOPS, Write_BW(MiB/s), Write_Avg_Latency(usec), Write_99.00th_Latency(usec), Write_99.90th_Latency(usec)"
-
-# 遍历文件列表，找到每列的最大宽度
-max_column_widths = [len(column) for column in header.split(", ")]
-
-# 用于存储结果行的列表
-result_rows = []
-
-print(header)
-# 遍历文件列表
-for file_name in file_list:
-    # 从文件名中提取信息
-    file_name_parts = file_name.split("_")
-    if len(file_name_parts) == 7:
-
-        jobs = file_name_parts[2]
-        io_depth= file_name_parts[3]
-        io_type = file_name_parts[4]
-        read_percentage = file_name_parts[5]
-        io_size = file_name_parts[6]
-        # 仅保留k.log前面的数字
-        io_size_convert = io_size.split(".")[0]
-        io_size_convert = ''.join(filter(str.isdigit, io_size))
-
-        #print(io_size, io_type, jobs, io_depth, read_percentage)
-
-        # 读取文件内容
-        with open(file_name, 'r') as file:
-            content = file.read()
-
-            # 提取读取和写入的信息
-            read_iops_start = content.find("read: IOPS=")
-            if read_iops_start != -1:
-                content = content[read_iops_start:]
-                read_iops_end = content.find(",")
-                if read_iops_end != -1:
-                    read_iops = content[11:read_iops_end]
-                    content = content[read_iops_end+1:]
-                    read_iops_convert = read_iops
-                    if 'k' in read_iops:
-                        read_iops_convert = str(float(read_iops.replace('k', '')) * 1000)
-
-            read_bw_start = content.find("BW=")
-            if read_bw_start != -1:
-                content = content[read_bw_start:]
-                read_bw_end = content.find("(")
-                if read_bw_end != -1:
-                    read_bw = content[3:read_bw_end]
-                    content = content[read_bw_end+1:]
-                    # 删除MiB/s并保留前面的数字
-                    read_bw = read_bw.replace("MiB/s", "").strip()
-            
-            read_slat_agv_latency = content.find("avg=")
-            if read_slat_agv_latency != -1:
-                content = content[read_slat_agv_latency:]
-                read_slat_agv_latency_end = content.find(",")
-                if read_slat_agv_latency_end != -1:
-                    read_slat_agv_latency = content[4:read_slat_agv_latency_end]
-                    content = content[read_slat_agv_latency_end:]
-            
-            read_clat_avg_latency = content.find("avg=")
-            if read_clat_avg_latency != -1:
-                content = content[read_clat_avg_latency:]
-                read_clat_avg_latency_end = content.find(",")
-                if read_clat_avg_latency_end != -1:
-                    read_clat_avg_latency = content[4:read_clat_avg_latency_end]
-                    content = content[read_clat_avg_latency_end+1:]
-
-            read_clat_99_00_latency = content.find("99.00th=[")
-            if read_clat_99_00_latency != -1:
-                content = content[read_clat_99_00_latency+1:]
-                read_clat_99_00_latency_end = content.find("]")
-                if read_clat_99_00_latency_end != -1:
-                    read_clat_99_00_latency = content[8:read_clat_99_00_latency_end]
-                    content = content[read_clat_99_00_latency_end+1:]
-            
-            read_clat_99_90_latency = content.find("99.90th=[")
-            if read_clat_99_90_latency != -1:
-                content = content[read_clat_99_90_latency+1:]
-                read_clat_99_90_latency_end = content.find("]")
-                if read_clat_99_90_latency_end != -1:
-                    read_clat_99_90_latency = content[8:read_clat_99_90_latency_end]
-                    content = content[read_clat_99_90_latency_end+1:]
-
-            write_iops_start = content.find("write: IOPS=")
-            if write_iops_start != -1:
-                content = content[write_iops_start:]
-                write_iops_end = content.find(",")
-                if write_iops_end != -1:
-                    write_iops = content[12:write_iops_end]
-                    content = content[write_iops_end+1:]
-                    write_iops_convert = write_iops
-                    if 'k' in write_iops:
-                        write_iops_convert = str(float(write_iops.replace('k', '')) * 1000)
-            
-            write_bw_start = content.find("BW=")
-            if write_bw_start != -1:
-                content = content[write_bw_start:]
-                write_bw_end = content.find("(")
-                if write_bw_end != -1:
-                    write_bw = content[3:write_bw_end]
-                    content = content[write_bw_end+1:]
-                    # 删除MiB/s并保留前面的数字
-                    write_bw = write_bw.replace("MiB/s", "").strip()
-
-            write_slat_agv_latency = content.find("avg=")
-            if write_slat_agv_latency != -1:
-                content = content[write_slat_agv_latency:]
-                write_slat_agv_latency_end = content.find(",")
-                if write_slat_agv_latency_end != -1:
-                    write_slat_agv_latency = content[4:write_slat_agv_latency_end]
-                    content = content[write_slat_agv_latency_end+1:]
-
-            write_clat_avg_latency = content.find("avg=")
-            if write_clat_avg_latency != -1:
-                content = content[write_clat_avg_latency:]
-                write_clat_avg_latency_end = content.find(",")
-                if write_clat_avg_latency_end != -1:
-                    write_clat_avg_latency = content[4:write_clat_avg_latency_end]
-                    content = content[write_clat_avg_latency_end+1:]
-
-            write_clat_99_00_latency = content.find("99.00th=[")
-            if write_clat_99_00_latency != -1:
-                content = content[write_clat_99_00_latency+1:]
-                write_clat_99_00_latency_end = content.find("]")
-                if write_clat_99_00_latency_end != -1:
-                    write_clat_99_00_latency = content[8:write_clat_99_00_latency_end]
-                    content = content[write_clat_99_00_latency_end+1:]
-
-            write_clat_99_90_latency = content.find("99.90th=[")
-            if write_clat_99_90_latency != -1:
-                content = content[write_clat_99_90_latency+1:]
-                write_clat_99_90_latency_end = content.find("]")
-                if write_clat_99_90_latency_end != -1:
-                    write_clat_99_90_latency = content[8:write_clat_99_90_latency_end]
-                    content = content[write_clat_99_90_latency_end+1:]
-            
-            # 统计文件数
-            matched_file_count += 1
-            
-            # 与header对应打印
-            # IO_Size_Convert(k), IO_Size(k), IO_Type, Jobs, IO_Depth, Read_IOPS, Read_BW(MiB/s), Read_Avg_Latency(usec), Read_99.00th_Latency(usec), Read_99.90th_Latency(usec), Write_IOPS, Write_BW(MiB/s), Write_Avg_Latency(usec), Write_99.00th_Latency(usec), Write_99.90th_Latency(usec)
-            # 使用字符串格式化，确保对齐
-            row = "{:<10}, {:<10}, {:<8}, {:<6}, {:<9}, {:<9}, {:<12}, {:<19}, {:<19}, {:<19}, {:<9}, {:<12}, {:<19}, {:<19}, {:<19}".format(
-                io_size, io_size_convert, io_type, jobs, io_depth, read_iops_convert, read_bw, read_clat_avg_latency, read_clat_99_00_latency, read_clat_99_90_latency, write_iops_convert, write_bw, write_clat_avg_latency, write_clat_99_00_latency, write_clat_99_90_latency
-            )
-            
-            print(row)
+import sys
+import glob
 
 
-# 打印匹配到的文件总数
-print(f"Total matched files: {matched_file_count}")
+def extract_direction_metrics(job, direction):
+    stats = job[direction]
+    iops = stats["iops"]
+    bw_kib = stats["bw"]
+    bw_mib = bw_kib / 1024.0
+
+    clat_ns = stats["clat_ns"]
+    avg_usec = clat_ns["mean"] / 1000.0
+
+    percentiles = clat_ns.get("percentile", {})
+    p99_usec = percentiles.get("99.000000", 0) / 1000.0
+    p999_usec = percentiles.get("99.900000", 0) / 1000.0
+
+    return {
+        "iops": iops,
+        "bw_mib": bw_mib,
+        "avg_usec": avg_usec,
+        "p99_usec": p99_usec,
+        "p999_usec": p999_usec,
+    }
+
+
+def parse_json_result(file_path):
+    with open(file_path, "r") as f:
+        data = json.load(f)
+
+    job = data["jobs"][0]
+    job_name = job["jobname"]
+
+    parts = job_name.split("_")
+    # iscsi_libaio_{numjobs}_{iodepth}_{rw}_{rwmixread}_{bs}
+    if len(parts) != 7:
+        return None
+
+    _, _, numjobs, iodepth, rw, rwmixread, bs = parts
+
+    if rw not in ("randrw", "rw"):
+        return None
+
+    read_metrics = extract_direction_metrics(job, "read")
+    write_metrics = extract_direction_metrics(job, "write")
+
+    bs_convert = bs.lower()
+    if bs_convert.endswith("k"):
+        bs_num = float(bs_convert[:-1])
+    elif bs_convert.endswith("m"):
+        bs_num = float(bs_convert[:-1]) * 1024
+    else:
+        bs_num = float(bs_convert) / 1024
+
+    return {
+        "bs": bs,
+        "bs_num": bs_num,
+        "rw": rw,
+        "rwmixread": rwmixread,
+        "numjobs": int(numjobs),
+        "iodepth": int(iodepth),
+        "read": read_metrics,
+        "write": write_metrics,
+    }
+
+
+def main():
+    search_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+
+    json_files = glob.glob(os.path.join(search_dir, "iscsi_libaio_*_*.json"))
+    if not json_files:
+        print("No JSON result files found.")
+        return
+
+    results = []
+    for f in json_files:
+        try:
+            r = parse_json_result(f)
+            if r:
+                results.append(r)
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            print(f"Warning: failed to parse {f}: {e}", file=sys.stderr)
+
+    if not results:
+        print("No mixed RW results found.")
+        return
+
+    results.sort(key=lambda x: (x["bs_num"], x["rw"], x["numjobs"], x["iodepth"]))
+
+    header = (
+        f"{'BS':<7} {'BS(K)':<7} {'Type':<8} {'Mix':<5} {'Jobs':<5} {'Depth':<6} "
+        f"{'R_IOPS':<10} {'R_BW(M)':<9} {'R_Avg(us)':<11} {'R_P99(us)':<11} {'R_P999(us)':<11} "
+        f"{'W_IOPS':<10} {'W_BW(M)':<9} {'W_Avg(us)':<11} {'W_P99(us)':<11} {'W_P999(us)':<11}"
+    )
+    print(header)
+    print("-" * len(header))
+
+    for r in results:
+        rd = r["read"]
+        wr = r["write"]
+        print(
+            f"{r['bs']:<7} {r['bs_num']:<7.0f} {r['rw']:<8} {r['rwmixread']:<5} {r['numjobs']:<5} {r['iodepth']:<6} "
+            f"{rd['iops']:<10.2f} {rd['bw_mib']:<9.2f} {rd['avg_usec']:<11.2f} {rd['p99_usec']:<11.2f} {rd['p999_usec']:<11.2f} "
+            f"{wr['iops']:<10.2f} {wr['bw_mib']:<9.2f} {wr['avg_usec']:<11.2f} {wr['p99_usec']:<11.2f} {wr['p999_usec']:<11.2f}"
+        )
+
+    print(f"\nTotal: {len(results)} test(s)")
+
+
+if __name__ == "__main__":
+    main()
